@@ -1,0 +1,45 @@
+/* GymControl · portal del socio (mobile first) */
+:root{--tiza:#EDF0F5;--papel:#fff;--hierro:#1B2330;--gris:#5B6678;--linea:#D5DAE3;
+  --azul:#2450E0;--azul-hondo:#142A66;--verde:#1E9E5A;--amarillo:#F2B705;--rojo:#D63A2F}
+*{box-sizing:border-box}
+body{margin:0;font:17px/1.5 'Barlow',system-ui,sans-serif;color:var(--hierro);background:var(--tiza)}
+h1,h2,.marca,.cifra{font-family:'Barlow Condensed','Barlow',sans-serif;font-weight:700;line-height:1.1;margin:0}
+h1{font-size:2.2rem} h2{font-size:1.4rem}
+.muted{color:var(--gris)} .oculto{display:none!important}
+:focus-visible{outline:3px solid var(--azul);outline-offset:2px}
+
+.barra{background:var(--azul-hondo);color:#fff;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+.marca{font-size:1.6rem;display:flex;align-items:center;gap:10px}
+.disco{width:24px;height:24px;border-radius:50%;border:5px solid var(--amarillo);position:relative}
+.disco::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--azul-hondo)}
+.barra button{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:4px;padding:6px 12px;font:inherit;cursor:pointer}
+.pestanas{display:flex;background:#fff;border-bottom:1px solid var(--linea)}
+.pestanas a{flex:1;text-align:center;padding:12px 8px;text-decoration:none;color:var(--gris);font-weight:600;border-bottom:3px solid transparent}
+.pestanas a.activa{color:var(--azul);border-bottom-color:var(--azul)}
+main{padding:20px 16px 48px;max-width:560px;margin:0 auto}
+.card{background:var(--papel);border:1px solid var(--linea);border-radius:8px;padding:20px;margin-bottom:16px}
+
+.estado{border-radius:8px;padding:24px 20px;color:#fff;margin-bottom:16px;background:var(--gris)}
+.estado.activa{background:var(--verde)} .estado.por_vencer{background:var(--amarillo);color:var(--hierro)}
+.estado.vencida{background:var(--rojo)} .estado.congelada{background:var(--azul)}
+.estado .cifra{font-size:3.2rem;display:block}
+.credencial{text-align:center}
+.credencial svg{max-width:100%;height:auto}
+.credencial .codigo{font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:700;letter-spacing:.08em}
+
+.fila{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--linea)}
+.fila:last-child{border-bottom:0}
+.fila .monto{font-family:'Barlow Condensed',sans-serif;font-size:1.4rem;font-weight:700}
+.insignia{display:inline-block;padding:1px 10px;border-radius:99px;font-size:.85rem;font-weight:600;color:#fff;background:var(--gris)}
+.insignia.activa{background:var(--verde)} .insignia.vencida,.insignia.cancelada{background:var(--rojo)} .insignia.congelada{background:var(--azul)}
+
+label{display:block;font-weight:600;margin-bottom:4px}
+input{font:inherit;width:100%;padding:12px;border:1px solid var(--linea);border-radius:4px}
+.btn{font:inherit;font-weight:600;width:100%;padding:13px;border-radius:4px;border:0;background:var(--azul);color:#fff;cursor:pointer}
+.btn:disabled{opacity:.6}
+.error{color:var(--rojo);font-weight:600;min-height:1.5em}
+.acceso{min-height:100vh;display:grid;align-content:center;gap:16px;padding:24px;max-width:420px;margin:0 auto}
+.acceso form{display:grid;gap:16px}
+.vacio{text-align:center;color:var(--gris);padding:24px 0}
+@media(min-width:700px){main{padding-top:32px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

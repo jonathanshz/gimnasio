@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Socios · GymControl</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/admin-styles.css">
+</head>
+<body>
+<div class="app">
+  <nav class="menu" id="menu" aria-label="Menú principal"></nav>
+  <main class="contenido">
+    <div class="encabezado"><h1>Socios</h1><button class="btn primario" id="nuevo">Nuevo socio</button></div>
+    <div class="barra"><input id="buscar" type="search" placeholder="Buscar por nombre, correo o credencial" aria-label="Buscar socio"></div>
+    <section class="card"><div class="tabla-scroll"><table>
+      <thead><tr><th>Credencial</th><th>Socio</th><th>Contacto</th><th>Membresía</th><th>Vigente hasta</th><th></th></tr></thead>
+      <tbody id="tabla"></tbody>
+    </table></div></section>
+  </main>
+</div>
+
+<dialog id="dlg">
+  <form id="form" method="dialog" novalidate>
+    <h2 id="dlg-titulo">Nuevo socio</h2>
+    <div class="campos">
+      <div><label for="nombre">Nombre</label><input id="nombre" name="nombre" required></div>
+      <div><label for="apellidos">Apellidos</label><input id="apellidos" name="apellidos" required></div>
+      <div><label for="email">Correo</label><input id="email" name="email" type="email" required></div>
+      <div><label for="telefono">Teléfono</label><input id="telefono" name="telefono" type="tel"></div>
+      <div><label for="fecha_nacimiento">Fecha de nacimiento</label><input id="fecha_nacimiento" name="fecha_nacimiento" type="date"></div>
+      <div><label for="rfc">RFC (para facturar)</label><input id="rfc" name="rfc" maxlength="13"></div>
+      <div class="ancho"><label for="razon_social">Razón social</label><input id="razon_social" name="razon_social"></div>
+    </div>
+    <div class="error" id="error" role="alert"></div>
+    <div class="pie"><button type="button" class="btn" id="cancelar">Cancelar</button><button class="btn primario" id="guardar">Guardar socio</button></div>
+  </form>
+  <div id="listo" class="oculto">
+    <h2>Socio registrado</h2>
+    <div class="credencial">Credencial: <b id="l-codigo"></b><br>Contraseña inicial del portal: <b id="l-pass"></b></div>
+    <p class="muted">Entrega la contraseña al socio ahora: no se vuelve a mostrar.</p>
+    <div class="pie"><button class="btn" id="cerrar-listo">Cerrar</button><a class="btn primario" id="l-cobrar" style="text-decoration:none">Cobrar membresía</a></div>
+  </div>
+</dialog>
+<script src="js/auth.js"></script><script src="js/api.js"></script><script src="js/socios.js"></script>
+</body>
+</html>

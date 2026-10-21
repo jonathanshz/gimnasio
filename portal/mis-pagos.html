@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mis pagos · GymControl</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/portal-styles.css">
+</head>
+<body>
+<div id="marco"></div>
+<main>
+  <h1>Mis pagos</h1>
+  <p class="muted">Historial de recibos. Guarda el folio si necesitas factura.</p>
+  <section class="card" style="margin-top:16px" id="lista"><p class="vacio">Cargando…</p></section>
+</main>
+<script src="js/portal-api.js"></script>
+<script>
+Sesion.proteger(); pintarMarco('pagos');
+(async () => {
+  try {
+    const pagos = await api('portal/mis-pagos');
+    $('#lista').innerHTML = pagos.length ? pagos.map(p => `
+      <div class="fila">
+        <div><strong>${esc(p.concepto)}</strong><br><span class="muted">${fecha(p.creado_en)} · ${esc(p.metodo)}<br>Folio ${esc(p.folio)}</span></div>
+        <span class="monto">${dinero(p.monto)}</span>
+      </div>`).join('') : '<div class="vacio">Todavía no tienes pagos registrados.</div>';
+  } catch (e) { $('#lista').innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+})();
+</script>
+</body>
+</html>
