@@ -182,7 +182,7 @@ CREATE TABLE
     INDEX ix_pagos_socio (socio_id, fecha)
   ) ENGINE = InnoDB;
 
---Intentos de pago en línea (Mercado Pago). Solo cuando el pago se aprueba se crea el registro real en `pagos`
+-- Intentos de pago en línea (Mercado Pago). Solo cuando el pago se aprueba se crea el registro real en `pagos`
 -- y la membresía; los pendientes y rechazados nunca llegan a `pagos`, así que no afectan el corte de caja.
 CREATE TABLE
   IF NOT EXISTS pagos_en_linea (
@@ -403,42 +403,22 @@ VALUES
 INSERT INTO
   maquinas (nombre, zona, estado, actualizado_en)
 VALUES
-  ('Caminadora 01', 'Cardio', 'LIBRE', NOW ()),
-  ('Caminadora 02', 'Cardio', 'LIBRE', NOW ()),
-  ('Caminadora 03', 'Cardio', 'LIBRE', NOW ()),
-  ('Elíptica 01', 'Cardio', 'LIBRE', NOW ()),
-  ('Bicicleta fija 01', 'Cardio', 'LIBRE', NOW ()),
-  ('Remo 01', 'Cardio', 'LIBRE', NOW ()),
-  (
-    'Rack de sentadilla 01',
-    'Pesas libres',
-    'LIBRE',
-    NOW ()
-  ),
-  (
-    'Rack de sentadilla 02',
-    'Pesas libres',
-    'LIBRE',
-    NOW ()
-  ),
-  ('Banco plano 01', 'Pesas libres', 'LIBRE', NOW ()),
-  (
-    'Banco inclinado 01',
-    'Pesas libres',
-    'LIBRE',
-    NOW ()
-  ),
-  ('Prensa de pierna', 'Máquinas', 'LIBRE', NOW ()),
-  ('Polea alta', 'Máquinas', 'LIBRE', NOW ()),
-  (
-    'Extensión de pierna',
-    'Máquinas',
-    'LIBRE',
-    NOW ()
-  ),
-  ('Smith', 'Máquinas', 'LIBRE', NOW ()),
-  ('Peck deck', 'Máquinas', 'LIBRE', NOW ()),
-  ('Remo sentado', 'Máquinas', 'LIBRE', NOW ());
+  ('Caminadora 01', 'Cardio', 'LIBRE', NOW()),
+  ('Caminadora 02', 'Cardio', 'LIBRE', NOW()),
+  ('Caminadora 03', 'Cardio', 'LIBRE', NOW()),
+  ('Elíptica 01', 'Cardio', 'LIBRE', NOW()),
+  ('Bicicleta fija 01', 'Cardio', 'LIBRE', NOW()),
+  ('Remo 01', 'Cardio', 'LIBRE', NOW()),
+  ('Rack de sentadilla 01', 'Pesas libres', 'LIBRE', NOW()),
+  ('Rack de sentadilla 02', 'Pesas libres', 'LIBRE', NOW()),
+  ('Banco plano 01', 'Pesas libres', 'LIBRE', NOW()),
+  ('Banco inclinado 01', 'Pesas libres', 'LIBRE', NOW()),
+  ('Prensa de pierna', 'Máquinas', 'LIBRE', NOW()),
+  ('Polea alta', 'Máquinas', 'LIBRE', NOW()),
+  ('Extensión de pierna', 'Máquinas', 'LIBRE', NOW()),
+  ('Smith', 'Máquinas', 'LIBRE', NOW()),
+  ('Peck deck', 'Máquinas', 'LIBRE', NOW()),
+  ('Remo sentado', 'Máquinas', 'LIBRE', NOW());
 
 -- Cuenta del DUEÑO (la única que no se registra desde la web). Entra en  app/  -> pestaña “Administración”
 --   Número de empleado: DUE-0001 · correo: dueno@fitcode.mx · contraseña: Dueno#2026  
@@ -465,8 +445,8 @@ VALUES
     '$2y$10$rDBgR/2WxIilB8WMz8gMduzpWckrdwO0/w6N04Xu/cKx04Mg0FXtq',
     'DUENO',
     1,
-    NOW (),
+    NOW(),
     '5550000000',
-    NOW (),
-    NOW ()
+    NOW(),
+    NOW()
   );
