@@ -1,71 +1,38 @@
 <?php
+/** Catálogo de planes y vistas de membresía del portal del socio. */
 class MembresiaController
 {
-    private Membresia $membresias;
+    /** GET planes */
+    public function planes(array $p, ?array $auth): void { responder(Plan::listar()); }
 
-    public function __construct() { $this->membresias = new Membresia(); }
-
-    public function tipos(array $params, ?array $auth): void
+    /** GET portal/inicio — resumen de “Mi acceso” */
+    public function inicio(array $p, ?array $auth): void
     {
-        responder($this->membresias->tipos());
+        $id = (int)$auth['sub']; Membresia::sincronizar();
+        $dentro = Asistencia::dentro($id); $vis = Asistencia::visitas($id, 60);
+        $dias = []; for ($i = 13; $i >= 0; $i--) $dias[sumarDias(hoy(), -$i)] = 0;
+        foreach ($vis as $v) { $k = substr($v['entrada'], 0, 10); if (isset($dias[$k])) $dias[$k]++; }
+        $maq = Maquina::conteo();
+        responder(['socio' => Socio::vista(Socio::porId($id)), 'membresia' => Membresia::actual($id), 'dentro' => $dentro ? $dentro['entrada'] : null,
+            'ultima_visita' => $vis ? $vis[0]['entrada'] : null, 'ficha' => Ficha::pendiente($id), 'dias14' => $dias,
+            'maquinas' => ['libres' => $maq['LIBRE'], 'total' => array_sum($maq)]]);
     }
 
-    public function estadoDeSocio(array $params, ?array $auth): void
+    /** GET portal/membresia — “Consulta tu membresía” */
+    public function membresia(array $p, ?array $auth): void
     {
-        $id = (int)$params['id'];
-        responder([
-            'resumen'   => $this->membresias->estadoSocio($id),
-            'historial' => $this->membresias->historial($id),
-        ]);
-    }
-
-    /** Asignación sin cobro (cortesía). Para cobrar se usa POST /pagos. */
-    public function asignar(array $params, ?array $auth): void
-    {
-        $d = entrada();
-        exigir($d, ['socio_id', 'tipo_membresia_id']);
-        if (!(new Socio())->obtener((int)$d['socio_id'])) fallar('No encontramos al socio.', 404);
-        $tipo = $this->membresias->tipo((int)$d['tipo_membresia_id']);
-        if (!$tipo) fallar('El tipo de membresía no existe.', 404);
-
-        $id = $this->membresias->asignar((int)$d['socio_id'], $tipo);
-        (new Usuario())->registrarBitacora((int)$auth['sub'], 'asignar_membresia', 'membresias', "Membresía #$id (cortesía)");
-        responder($this->membresias->obtener($id), 201);
-    }
-
-    /** Cambia el estado: congelar, reactivar o cancelar. */
-    public function cambiarEstado(array $params, ?array $auth): void
-    {
-        $id = (int)$params['id'];
-        $d = entrada();
-        exigir($d, ['estado']);
-        $m = $this->membresias->obtener($id);
-        if (!$m) fallar('No encontramos la membresía.', 404);
-
-        $permitidas = [
-            'activa'    => ['congelada', 'cancelada'],
-            'congelada' => ['activa', 'cancelada'],
-        ];
-        if (!in_array($d['estado'], $permitidas[$m['estado']] ?? [], true)) {
-            fallar("No se puede pasar de {$m['estado']} a {$d['estado']}.", 422);
-        }
-        match ($d['estado']) {
-            'congelada' => $this->membresias->congelar($id),
-            'activa'    => $this->membresias->reactivar($id),
-            'cancelada' => $this->membresias->cancelar($id),
-        };
-        (new Usuario())->registrarBitacora((int)$auth['sub'], 'estado_membresia', 'membresias', "#$id -> {$d['estado']}");
-        responder($this->membresias->obtener($id));
-    }
-
-    /** Activa -> Vencida. Se llama al abrir el dashboard y puede programarse cada noche. */
-    public function actualizarEstados(array $params, ?array $auth): void
-    {
-        responder(['vencidas' => $this->membresias->marcarVencidas()]);
-    }
-
-    public function porVencer(array $params, ?array $auth): void
-    {
-        responder($this->membresias->porVencer(DIAS_AVISO_VENCIMIENTO));
+        $id = (int)$auth['sub']; Membresia::sincronizar();
+        $m = Membresia::actual($id);
+        $vis = Asistencia::visitas($id, 500);
+        $pago = null;
+        if ($m) foreach (Pago::porSocio($id) as $x) if ($x['membresia_id'] === $m['id']) { $pago = $x; break; }
+        $lim = sumarDias(hoy(), -30) . ' 00:00:00'; $dur = [];
+        foreach ($vis as $v) if ($v['entrada'] >= $lim && $v['salida']) $dur[] = (strtotime($v['salida']) - strtotime($v['entrada'])) / 60;
+        $rec = array_slice($vis, 0, 8); $horas = [];
+        foreach ($rec as $v) { $h = (int)substr($v['entrada'], 11, 2); $horas[$h] = ($horas[$h] ?? 0) + 1; }
+        arsort($horas);
+        responder(['socio' => Socio::vista(Socio::porId($id)), 'membresia' => $m, 'siguiente' => Membresia::siguiente($id), 'historial' => Membresia::historial($id), 'pago' => $pago,
+            'visitas_30' => Asistencia::contarDesde($id, 30), 'visitas_periodo' => $m ? count(array_filter($vis, fn($v) => $v['entrada'] >= $m['fecha_inicio'])) : 0,
+            'promedio_min' => $dur ? (int)round(array_sum($dur) / count($dur)) : 0, 'hora_favorita' => $horas ? array_key_first($horas) : null, 'recientes' => $rec]);
     }
 }

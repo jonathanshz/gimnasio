@@ -7,3 +7,13 @@ RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]
+
+# Los documentos se envían en base64 dentro del JSON: sube el límite de PHP (solo aplica con mod_php, que es el de XAMPP)
+<IfModule mod_php.c>
+  php_value post_max_size 32M
+  php_value memory_limit 256M
+</IfModule>
+<IfModule mod_php8.c>
+  php_value post_max_size 32M
+  php_value memory_limit 256M
+</IfModule>

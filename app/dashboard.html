@@ -1,58 +1,25 @@
-<!DOCTYPE html>
-<html lang="es">
+<!doctype html>
+<html lang="es-MX">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Resumen · GymControl</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#08090b">
+<title>Panel de recepción · FIT CODE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;500;800&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%23c8ff2e'/><path d='M13 3 5 14h6l-1 7 8-11h-6z' fill='%230b0e02'/></svg>">
+<link rel="stylesheet" href="../shared/css/fitcode.css">
 <link rel="stylesheet" href="css/admin-styles.css">
-<link rel="icon" type="image/png" href="img/circulo.png">
 </head>
 <body>
-<div class="app">
-  <nav class="menu" id="menu" aria-label="Menú principal"></nav>
-  <main class="contenido">
-    <div class="encabezado"><div><h1>Resumen del día</h1><p class="muted" id="fecha-hoy"></p></div></div>
-    <section class="cifras" aria-label="Indicadores">
-      <div class="card"><span class="cifra" id="c-socios">–</span>Socios registrados</div>
-      <div class="card"><span class="cifra" id="c-entradas">–</span>Entradas permitidas hoy</div>
-      <div class="card" id="tarjeta-cobro"><span class="cifra" id="c-cobrado">–</span>Cobrado hoy</div>
-      <div class="card"><span class="cifra" id="c-vencer">–</span>Membresías por vencer</div>
-    </section>
-    <section class="card" id="bloque-vencer">
-      <h2>Vencen en los próximos 7 días</h2>
-      <p class="muted">Avísales por teléfono o correo antes de que pierdan el acceso.</p>
-      <div class="tabla-scroll"><table>
-        <thead><tr><th>Socio</th><th>Teléfono</th><th>Correo</th><th>Vence</th></tr></thead>
-        <tbody id="vencer"></tbody>
-      </table></div>
-    </section>
-  </main>
-</div>
-<script src="js/auth.js"></script><script src="js/api.js"></script>
-<script>
-Auth.proteger(); pintarMenu('dashboard.html');
-const caja = ROLES_CAJA.includes(Auth.usuario().rol);
-$('#fecha-hoy').textContent = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
-if (!caja) { $('#tarjeta-cobro').classList.add('oculto'); $('#bloque-vencer').classList.add('oculto'); }
-
-(async () => {
-  try { await api('membresias/actualizar-estados', { method: 'POST' }); } catch {}
-  const [socios, asist, corte, vencer] = await Promise.allSettled([
-    api('socios'),
-    caja ? api('asistencias') : Promise.reject(),
-    caja ? api('pagos/corte') : Promise.reject(),
-    caja ? api('membresias/por-vencer') : Promise.reject(),
-  ]);
-  if (socios.status === 'fulfilled') $('#c-socios').textContent = socios.value.length;
-  if (asist.status === 'fulfilled') $('#c-entradas').textContent = asist.value.filter(a => a.resultado === 'permitido').length;
-  if (corte.status === 'fulfilled') $('#c-cobrado').textContent = dinero(corte.value.total);
-  if (vencer.status === 'fulfilled') {
-    $('#c-vencer').textContent = vencer.value.length;
-    $('#vencer').innerHTML = vencer.value.length
-      ? vencer.value.map(s => `<tr><td>${esc(s.nombre)} ${esc(s.apellidos)}</td><td>${esc(s.telefono || '—')}</td><td>${esc(s.email)}</td><td>${fecha(s.fecha_fin)}</td></tr>`).join('')
-      : '<tr><td colspan="4" class="vacio">Nadie vence esta semana.</td></tr>';
-  } else { $('#c-vencer').textContent = '–'; }
-})();
-</script>
+<div class="bg-grid" aria-hidden="true"></div>
+<div id="app"></div>
+<noscript><p style="padding:40px;color:#fff">Activa JavaScript para usar FIT CODE.</p></noscript>
+<script src="../shared/js/core.js"></script>
+<script src="../shared/js/api.js"></script>
+<script src="../shared/js/barcode.js"></script>
+<script src="../shared/js/layout.js"></script>
+<script src="js/dashboard.js"></script>
 </body>
 </html>
