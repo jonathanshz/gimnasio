@@ -2,7 +2,10 @@
 class MaquinaController
 {
     /** GET maquinas — disponibilidad en tiempo real (socios y personal) */
-    public function listar(array $p, ?array $auth): void { responder(Maquina::listar()); }
+    public function listar(array $p, ?array $auth): void
+    {
+        responder(Maquina::listar());
+    }
 
     /** PUT maquinas/{id}/estado {estado}. Mantenimiento solo lo cambia administración. */
     public function cambiarEstado(array $p, ?array $auth): void

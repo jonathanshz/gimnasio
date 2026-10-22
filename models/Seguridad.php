@@ -1,4 +1,5 @@
 <?php
+
 /** Bloqueo por intentos fallidos (tabla login_intentos) y códigos de verificación de correo (verificaciones_correo). */
 class Seguridad
 {
@@ -32,7 +33,10 @@ class Verificacion
         $h = hash_hmac('sha256', "v|$filaId|$cuentaId|$creado", JWT_SECRET);
         return str_pad((string)(hexdec(substr($h, 0, 8)) % 1000000), 6, '0', STR_PAD_LEFT);
     }
-    private static function hash(string $codigo): string { return hash_hmac('sha256', $codigo, JWT_SECRET); }
+    private static function hash(string $codigo): string
+    {
+        return hash_hmac('sha256', $codigo, JWT_SECRET);
+    }
 
     private static function vigente(string $cuenta, int $id): ?array
     {
@@ -45,9 +49,17 @@ class Verificacion
     public static function info(string $cuenta, int $id, string $correo): array
     {
         $v = self::vigente($cuenta, $id);
-        if (!$v || $v['expira_en'] < ahora()) { $r = self::enviar($cuenta, $id, $correo, true); if (!$r['ok']) return $r; $v = self::vigente($cuenta, $id); }
-        return ['ok' => true, 'correo' => $correo, 'expira_en' => $v['expira_en'],
-                'codigo_demo' => MAIL_MODO === 'demo' ? self::codigoDe((int)$v['id'], $id, $v['creado_en']) : null];
+        if (!$v || $v['expira_en'] < ahora()) {
+            $r = self::enviar($cuenta, $id, $correo, true);
+            if (!$r['ok']) return $r;
+            $v = self::vigente($cuenta, $id);
+        }
+        return [
+            'ok' => true,
+            'correo' => $correo,
+            'expira_en' => $v['expira_en'],
+            'codigo_demo' => MAIL_MODO === 'demo' ? self::codigoDe((int)$v['id'], $id, $v['creado_en']) : null
+        ];
     }
 
     public static function enviar(string $cuenta, int $id, string $correo, bool $forzar = false): array
@@ -62,7 +74,10 @@ class Verificacion
         $fila = (int)$db->lastInsertId();
         $codigo = self::codigoDe($fila, $id, $creado);
         $db->prepare('UPDATE verificaciones_correo SET codigo_hash = ? WHERE id = ?')->execute([self::hash($codigo), $fila]);
-        Correo::enviarCodigo($correo, $codigo);
+        if (!Correo::enviarCodigo($correo, $codigo)) {
+            $db->prepare('UPDATE verificaciones_correo SET invalidado_en = ? WHERE id = ?')->execute([ahora(), $fila]);   // no se entregó: que el siguiente intento no espere
+            return ['ok' => false, 'status' => 502, 'error' => 'No pudimos enviar el correo en este momento. Inténtalo de nuevo en unos minutos.'];
+        }
         return ['ok' => true];
     }
 

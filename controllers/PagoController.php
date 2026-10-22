@@ -5,12 +5,16 @@ class PagoController
     /** GET portal/pagos */
     public function misPagos(array $p, ?array $auth): void
     {
-        $id = (int)$auth['sub']; Membresia::sincronizar();
-        responder(['pagos' => Pago::porSocio($id), 'membresia' => Membresia::actual($id), 'ficha' => Ficha::pendiente($id), 'tarjeta_habilitada' => PAGO_TARJETA_SIMULADO]);
+        $id = (int)$auth['sub'];
+        Membresia::sincronizar();
+        responder(['pagos' => Pago::porSocio($id), 'membresia' => Membresia::actual($id), 'ficha' => Ficha::pendiente($id), 'tarjeta_habilitada' => PAGO_MODO !== 'ninguno' && (PAGO_MODO === 'simulado' || MercadoPago::activo()), 'pago_modo' => PAGO_MODO]);
     }
 
     /** GET portal/ficha — ficha de efectivo pendiente (o null) */
-    public function ficha(array $p, ?array $auth): void { responder(Ficha::pendiente((int)$auth['sub'])); }
+    public function ficha(array $p, ?array $auth): void
+    {
+        responder(Ficha::pendiente((int)$auth['sub']));
+    }
 
     /** POST portal/ficha {plan_id} — genera la ficha con referencia única */
     public function fichaCrear(array $p, ?array $auth): void
@@ -27,16 +31,18 @@ class PagoController
         responder(['cancelada' => true]);
     }
 
-    /** POST portal/pagar-tarjeta — PASARELA SIMULADA. En producción se reemplaza por Mercado Pago. Nunca se guarda el número ni el CVV. */
+    /** POST portal/pagar-tarjeta — PASARELA SIMULADA (PAGO_MODO = simulado). Con PAGO_MODO = mercadopago se usa PagoEnLineaController. Nunca se guarda el número ni el CVV. */
     public function pagarTarjeta(array $p, ?array $auth): void
     {
         if (!PAGO_TARJETA_SIMULADO) fallar('El pago con tarjeta en línea no está habilitado.', 403);
-        $d = entrada(); $id = (int)$auth['sub'];
+        $d = entrada();
+        $id = (int)$auth['sub'];
         $plan = Plan::porId((int)($d['plan_id'] ?? 0));
         if (!$plan) fallar('Ese plan no existe.', 404);
         $n = preg_replace('/\D/', '', (string)($d['numero'] ?? ''));
         $marca = preg_match('/^4/', $n) ? 'VISA' : (preg_match('/^(5[1-5]|2[2-7])/', $n) ? 'MASTERCARD' : (preg_match('/^3[47]/', $n) ? 'AMEX' : null));
-        $mm = (int)substr((string)($d['exp'] ?? ''), 0, 2); $aa = (int)substr((string)($d['exp'] ?? ''), 3, 2);
+        $mm = (int)substr((string)($d['exp'] ?? ''), 0, 2);
+        $aa = (int)substr((string)($d['exp'] ?? ''), 3, 2);
         $cvv = (string)($d['cvv'] ?? '');
         if (strlen(mayus($d['titular'] ?? '')) < 5) fallar('Escribe el nombre del titular como aparece en la tarjeta.', 422);
         if (!$marca || strlen($n) < 15 || !luhnValido($n)) fallar('El número de tarjeta no es válido.', 422);
@@ -60,7 +66,9 @@ class PagoController
     /** POST pagos/mostrador {socio_id, plan_id, metodo} — cobro en caja (efectivo o terminal) */
     public function mostrador(array $p, ?array $auth): void
     {
-        $d = entrada(); $socio = Socio::porId((int)($d['socio_id'] ?? 0)); $plan = Plan::porId((int)($d['plan_id'] ?? 0));
+        $d = entrada();
+        $socio = Socio::porId((int)($d['socio_id'] ?? 0));
+        $plan = Plan::porId((int)($d['plan_id'] ?? 0));
         $metodo = (string)($d['metodo'] ?? '');
         if (!$socio || !$socio['activo']) fallar('Socio no encontrado.', 404);
         if (!$plan) fallar('Ese plan no existe.', 404);
@@ -81,7 +89,10 @@ class PagoController
     }
 
     /** GET fichas/pendientes */
-    public function fichasPendientes(array $p, ?array $auth): void { responder(Ficha::pendientes()); }
+    public function fichasPendientes(array $p, ?array $auth): void
+    {
+        responder(Ficha::pendientes());
+    }
 
     /** GET pagos?desde=&hasta= */
     public function listar(array $p, ?array $auth): void

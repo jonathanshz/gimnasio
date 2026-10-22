@@ -1,11 +1,20 @@
 <?php
+
 /** Catálogo de planes y membresías de los socios. */
 class Plan
 {
     public static function vista(array $p): array
     {
-        return ['id' => (int)$p['id'], 'clave' => $p['clave'], 'nombre' => $p['nombre'], 'duracion_dias' => (int)$p['duracion_dias'],
-            'precio' => (float)$p['precio'], 'descripcion' => $p['descripcion'], 'beneficios' => json_decode($p['beneficios'] ?: '[]', true) ?: [], 'activo' => (int)$p['activo']];
+        return [
+            'id' => (int)$p['id'],
+            'clave' => $p['clave'],
+            'nombre' => $p['nombre'],
+            'duracion_dias' => (int)$p['duracion_dias'],
+            'precio' => (float)$p['precio'],
+            'descripcion' => $p['descripcion'],
+            'beneficios' => json_decode($p['beneficios'] ?: '[]', true) ?: [],
+            'activo' => (int)$p['activo']
+        ];
     }
     public static function listar(): array
     {
@@ -13,8 +22,10 @@ class Plan
     }
     public static function porId(int $id, bool $soloActivos = true): ?array
     {
-        $st = Database::conectar()->prepare('SELECT * FROM planes WHERE id = ?' . ($soloActivos ? ' AND activo = 1' : '')); $st->execute([$id]);
-        $p = $st->fetch(); return $p ? self::vista($p) : null;
+        $st = Database::conectar()->prepare('SELECT * FROM planes WHERE id = ?' . ($soloActivos ? ' AND activo = 1' : ''));
+        $st->execute([$id]);
+        $p = $st->fetch();
+        return $p ? self::vista($p) : null;
     }
 }
 
@@ -29,27 +40,46 @@ class Membresia
     /** Añade estado calculado, días restantes, porcentaje y datos del plan. Mismas claves que usaba el prototipo. */
     public static function enriquecer(array $m): array
     {
-        $h = hoy(); $ini = $m['inicio']; $fin = $m['vence'];
+        $h = hoy();
+        $ini = $m['inicio'];
+        $fin = $m['vence'];
         $estado = strtolower($m['estado']);
         if ($estado === 'activa' && $h > $fin) $estado = 'vencida';
         if ($estado === 'activa' && $h < $ini) $estado = 'pendiente';
         $total = max(1, diasEntre($ini, $fin) + 1);
         $restan = $h > $fin ? 0 : diasEntre($h < $ini ? $ini : $h, $fin) + 1;
-        return ['id' => (int)$m['id'], 'socio_id' => (int)$m['socio_id'], 'plan_id' => (int)$m['plan_id'], 'fecha_inicio' => $ini, 'fecha_fin' => $fin, 'estado' => $estado,
-            'plan' => $m['plan_nombre'], 'precio' => (float)$m['plan_precio'], 'precio_aplicado' => (float)$m['precio_aplicado'],
-            'beneficios' => json_decode($m['plan_beneficios'] ?: '[]', true) ?: [], 'descripcion' => $m['plan_descripcion'],
-            'dias_totales' => $total, 'dias_restantes' => $restan, 'porcentaje' => (int)round(min(100, $restan / $total * 100)),
-            'por_vencer' => $estado === 'activa' && $restan <= DIAS_AVISO_VENCIMIENTO, 'creado_en' => $m['creado_en']];
+        return [
+            'id' => (int)$m['id'],
+            'socio_id' => (int)$m['socio_id'],
+            'plan_id' => (int)$m['plan_id'],
+            'fecha_inicio' => $ini,
+            'fecha_fin' => $fin,
+            'estado' => $estado,
+            'plan' => $m['plan_nombre'],
+            'precio' => (float)$m['plan_precio'],
+            'precio_aplicado' => (float)$m['precio_aplicado'],
+            'beneficios' => json_decode($m['plan_beneficios'] ?: '[]', true) ?: [],
+            'descripcion' => $m['plan_descripcion'],
+            'dias_totales' => $total,
+            'dias_restantes' => $restan,
+            'porcentaje' => (int)round(min(100, $restan / $total * 100)),
+            'por_vencer' => $estado === 'activa' && $restan <= DIAS_AVISO_VENCIMIENTO,
+            'creado_en' => $m['creado_en']
+        ];
     }
 
     private static function filas(int $socioId): array
     {
         $st = Database::conectar()->prepare("SELECT m.*, p.nombre AS plan_nombre, p.precio AS plan_precio, p.beneficios AS plan_beneficios, p.descripcion AS plan_descripcion
             FROM membresias m JOIN planes p ON p.id = m.plan_id WHERE m.socio_id = ? ORDER BY m.inicio DESC, m.id DESC");
-        $st->execute([$socioId]); return array_map([self::class, 'enriquecer'], $st->fetchAll());
+        $st->execute([$socioId]);
+        return array_map([self::class, 'enriquecer'], $st->fetchAll());
     }
 
-    public static function historial(int $socioId): array { return self::filas($socioId); }
+    public static function historial(int $socioId): array
+    {
+        return self::filas($socioId);
+    }
 
     public static function actual(int $socioId): ?array
     {
@@ -83,13 +113,14 @@ class Membresia
         $db = Database::conectar();
         $ini = self::inicioParaNueva($socioId);
         $db->prepare("INSERT INTO membresias (socio_id, plan_id, inicio, vence, estado, asignada_por, creado_en, precio_aplicado) VALUES (?,?,?,?,'ACTIVA',?,?,?)")
-           ->execute([$socioId, $plan['id'], $ini, sumarDias($ini, $plan['duracion_dias'] - 1), $staffId, ahora(), $plan['precio']]);
+            ->execute([$socioId, $plan['id'], $ini, sumarDias($ini, $plan['duracion_dias'] - 1), $staffId, ahora(), $plan['precio']]);
         return (int)$db->lastInsertId();
     }
 
     public static function resumenActivos(): array
     {
-        $db = Database::conectar(); self::sincronizar();
+        $db = Database::conectar();
+        self::sincronizar();
         $h = hoy();
         $activos = (int)$db->query("SELECT COUNT(DISTINCT socio_id) FROM membresias WHERE estado = 'ACTIVA' AND inicio <= '$h' AND vence >= '$h'")->fetchColumn();
         $porPlan = $db->query("SELECT p.nombre, COUNT(DISTINCT m.socio_id) n FROM membresias m JOIN planes p ON p.id = m.plan_id

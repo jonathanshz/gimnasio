@@ -1,4 +1,5 @@
 <?php
+
 /** Personal del gimnasio (tabla staff + staff_documentos). */
 class Usuario
 {
@@ -8,35 +9,53 @@ class Usuario
     {
         if (!$u) return null;
         $estado = $u['activo'] ? 'activo' : ($u['aprobado_en'] ? 'inactivo' : 'pendiente');
-        return ['id' => (int)$u['id'], 'numero_empleado' => $u['usuario'], 'nombre' => $u['nombre'], 'nombre_corto' => explode(' ', $u['nombre'])[0],
-            'rol' => $u['rol'], 'email' => $u['correo'], 'rfc' => rtrim($u['rfc']), 'telefono' => $u['telefono'], 'estado' => $estado,
-            'verificado' => !empty($u['correo_verificado_en']), 'activo' => (int)$u['activo'], 'creado_en' => $u['creado_en']];
+        return [
+            'id' => (int)$u['id'],
+            'numero_empleado' => $u['usuario'],
+            'nombre' => $u['nombre'],
+            'nombre_corto' => explode(' ', $u['nombre'])[0],
+            'rol' => $u['rol'],
+            'email' => $u['correo'],
+            'rfc' => rtrim($u['rfc']),
+            'telefono' => $u['telefono'],
+            'estado' => $estado,
+            'verificado' => !empty($u['correo_verificado_en']),
+            'activo' => (int)$u['activo'],
+            'creado_en' => $u['creado_en']
+        ];
     }
 
     public static function porId(int $id): ?array
     {
-        $st = Database::conectar()->prepare('SELECT * FROM staff WHERE id = ?'); $st->execute([$id]); return $st->fetch() ?: null;
+        $st = Database::conectar()->prepare('SELECT * FROM staff WHERE id = ?');
+        $st->execute([$id]);
+        return $st->fetch() ?: null;
     }
     public static function porNumeroOCorreo(string $ident, array $roles): ?array
     {
         $in = implode(',', array_fill(0, count($roles), '?'));
         $st = Database::conectar()->prepare("SELECT * FROM staff WHERE (usuario = ? OR correo = ?) AND rol IN ($in) LIMIT 1");
-        $st->execute(array_merge([$ident, $ident], $roles)); return $st->fetch() ?: null;
+        $st->execute(array_merge([$ident, $ident], $roles));
+        return $st->fetch() ?: null;
     }
     public static function porNumeroYCorreo(string $numero, string $correo, array $roles): ?array
     {
         $in = implode(',', array_fill(0, count($roles), '?'));
         $st = Database::conectar()->prepare("SELECT * FROM staff WHERE usuario = ? AND correo = ? AND rol IN ($in) LIMIT 1");
-        $st->execute(array_merge([$numero, $correo], $roles)); return $st->fetch() ?: null;
+        $st->execute(array_merge([$numero, $correo], $roles));
+        return $st->fetch() ?: null;
     }
     public static function existeRFC(string $rfc): bool
     {
-        $st = Database::conectar()->prepare('SELECT 1 FROM staff WHERE rfc = ?'); $st->execute([$rfc]); return (bool)$st->fetchColumn();
+        $st = Database::conectar()->prepare('SELECT 1 FROM staff WHERE rfc = ?');
+        $st->execute([$rfc]);
+        return (bool)$st->fetchColumn();
     }
     public static function existeCorreo(string $correo): bool
     {
         $db = Database::conectar();
-        $st = $db->prepare('SELECT 1 FROM staff WHERE correo = ? UNION SELECT 1 FROM socios WHERE correo = ?'); $st->execute([$correo, $correo]);
+        $st = $db->prepare('SELECT 1 FROM staff WHERE correo = ? UNION SELECT 1 FROM socios WHERE correo = ?');
+        $st->execute([$correo, $correo]);
         return (bool)$st->fetchColumn();
     }
     public static function siguienteNumero(string $rol): string
@@ -56,18 +75,36 @@ class Usuario
             $numero = self::siguienteNumero($d['rol']);
             $db->prepare('INSERT INTO staff (nombre, usuario, rfc, correo, password_hash, rol, activo, creado_en, telefono, tel_emergencia, fecha_nacimiento,
                     servicio_medico, enfermedad_cronica, enfermedad_otra, correo_verificado_en, aprobado_en) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
-               ->execute([$d['nombre'], $numero, $d['rfc'], $d['correo'], password_hash($d['password'], PASSWORD_BCRYPT), $d['rol'], $aprobada ? 1 : 0, ahora(),
-                    $d['telefono'] ?? null, $d['tel_emergencia'] ?? null, $d['fecha_nacimiento'] ?? null, $d['servicio_medico'] ?? null,
-                    $d['enfermedad_cronica'] ?? null, $d['enfermedad_otra'] ?? null, $aprobada ? ahora() : null, $aprobada ? ahora() : null]);
+                ->execute([
+                    $d['nombre'],
+                    $numero,
+                    $d['rfc'],
+                    $d['correo'],
+                    password_hash($d['password'], PASSWORD_BCRYPT),
+                    $d['rol'],
+                    $aprobada ? 1 : 0,
+                    ahora(),
+                    $d['telefono'] ?? null,
+                    $d['tel_emergencia'] ?? null,
+                    $d['fecha_nacimiento'] ?? null,
+                    $d['servicio_medico'] ?? null,
+                    $d['enfermedad_cronica'] ?? null,
+                    $d['enfermedad_otra'] ?? null,
+                    $aprobada ? ahora() : null,
+                    $aprobada ? ahora() : null
+                ]);
             $id = (int)$db->lastInsertId();
             foreach ($docs as $tipo => $f) {
                 $ruta = Almacen::mover($f['ruta'], 'staff/' . $id);
                 $db->prepare('INSERT INTO staff_documentos (staff_id, tipo, ruta, mime, nombre_original, creado_en) VALUES (?,?,?,?,?,?)')
-                   ->execute([$id, strtoupper($tipo), $ruta, $f['mime'], $f['nombre'], ahora()]);
+                    ->execute([$id, strtoupper($tipo), $ruta, $f['mime'], $f['nombre'], ahora()]);
             }
             $db->commit();
             return ['id' => $id, 'numero_empleado' => $numero];
-        } catch (Throwable $e) { $db->rollBack(); throw $e; }
+        } catch (Throwable $e) {
+            $db->rollBack();
+            throw $e;
+        }
     }
 
     public static function listar(): array
@@ -87,10 +124,13 @@ class Usuario
     public static function documentos(int $id): array
     {
         $st = Database::conectar()->prepare('SELECT id, tipo, mime, nombre_original, creado_en FROM staff_documentos WHERE staff_id = ? ORDER BY id');
-        $st->execute([$id]); return $st->fetchAll();
+        $st->execute([$id]);
+        return $st->fetchAll();
     }
     public static function documento(int $staffId, int $docId): ?array
     {
-        $st = Database::conectar()->prepare('SELECT * FROM staff_documentos WHERE id = ? AND staff_id = ?'); $st->execute([$docId, $staffId]); return $st->fetch() ?: null;
+        $st = Database::conectar()->prepare('SELECT * FROM staff_documentos WHERE id = ? AND staff_id = ?');
+        $st->execute([$docId, $staffId]);
+        return $st->fetch() ?: null;
     }
 }

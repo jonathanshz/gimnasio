@@ -15,9 +15,16 @@ class AdminController
         Membresia::sincronizar();
         $r = Membresia::resumenActivos();
         $pend = array_filter(Usuario::listar(), fn($u) => $u['estado'] === 'pendiente');
-        responder(['ingresos_mes' => Pago::ingresosMes(), 'socios_activos' => $r['activos'], 'socios_total' => Socio::totales()['total'],
-            'fichas_pendientes' => count(Ficha::pendientes()), 'personal_pendiente' => count($pend), 'afluencia' => Asistencia::afluenciaPorHora(),
-            'por_plan' => $r['por_plan'], 'por_vencer' => $r['por_vencer']]);
+        responder([
+            'ingresos_mes' => Pago::ingresosMes(),
+            'socios_activos' => $r['activos'],
+            'socios_total' => Socio::totales()['total'],
+            'fichas_pendientes' => count(Ficha::pendientes()),
+            'personal_pendiente' => count($pend),
+            'afluencia' => Asistencia::afluenciaPorHora(),
+            'por_plan' => $r['por_plan'],
+            'por_vencer' => $r['por_vencer']
+        ]);
     }
 
     /** POST codigos — genera el código de 6 dígitos para un socio nuevo */
@@ -28,5 +35,8 @@ class AdminController
     }
 
     /** GET codigos */
-    public function codigos(array $p, ?array $auth): void { responder(Codigo::listar(40)); }
+    public function codigos(array $p, ?array $auth): void
+    {
+        responder(Codigo::listar(40));
+    }
 }

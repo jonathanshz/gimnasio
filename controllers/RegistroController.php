@@ -1,15 +1,24 @@
 <?php
+
 /** Validaciones de personas (las mismas reglas del formulario, aplicadas ahora también en el servidor). */
 class Validar
 {
     /** Devuelve [valores normalizados, errores]. $op: sinFecha, sinGenero, sinSalud, tipo (mayor|menor|coach) */
     public static function persona(array $d, string $tipo, array $op = []): array
     {
-        $E = []; $v = [
-            'nombre' => mayus($d['nombre'] ?? ''), 'apellido_paterno' => mayus($d['apellido_paterno'] ?? ''), 'apellido_materno' => mayus($d['apellido_materno'] ?? ''),
-            'fecha_nacimiento' => trim((string)($d['fecha_nacimiento'] ?? '')), 'fecha_iso' => null, 'edad' => '',
-            'genero' => (string)($d['genero'] ?? ''), 'sexo' => (string)($d['sexo'] ?? ''), 'servicio_medico' => (string)($d['servicio_medico'] ?? ''),
-            'enfermedad_cronica' => (string)($d['enfermedad_cronica'] ?? ''), 'enfermedad_otra' => mayus($d['enfermedad_otra'] ?? ''),
+        $E = [];
+        $v = [
+            'nombre' => mayus($d['nombre'] ?? ''),
+            'apellido_paterno' => mayus($d['apellido_paterno'] ?? ''),
+            'apellido_materno' => mayus($d['apellido_materno'] ?? ''),
+            'fecha_nacimiento' => trim((string)($d['fecha_nacimiento'] ?? '')),
+            'fecha_iso' => null,
+            'edad' => '',
+            'genero' => (string)($d['genero'] ?? ''),
+            'sexo' => (string)($d['sexo'] ?? ''),
+            'servicio_medico' => (string)($d['servicio_medico'] ?? ''),
+            'enfermedad_cronica' => (string)($d['enfermedad_cronica'] ?? ''),
+            'enfermedad_otra' => mayus($d['enfermedad_otra'] ?? ''),
         ];
         foreach ([['nombre', 'Nombre'], ['apellido_paterno', 'Apellido paterno'], ['apellido_materno', 'Apellido materno']] as [$k, $l])
             if (!preg_match(RE_NOMBRE, $v[$k])) $E[$k] = "$l: solo letras en MAYÚSCULAS.";
@@ -17,7 +26,9 @@ class Validar
             $iso = fechaNacimientoIso($v['fecha_nacimiento']);
             if (!$iso) $E['fecha_nacimiento'] = 'Usa el formato DD/MM/AAAA con una fecha real.';
             else {
-                $edad = edadDesde($iso); $v['edad'] = (string)$edad; $v['fecha_iso'] = $iso;
+                $edad = edadDesde($iso);
+                $v['edad'] = (string)$edad;
+                $v['fecha_iso'] = $iso;
                 if ($tipo === 'mayor' && $edad < 18) $E['fecha_nacimiento'] = 'Es menor de edad: regresa y elige “Menor de edad”.';
                 if ($tipo === 'menor' && $edad >= 18) $E['fecha_nacimiento'] = 'Es mayor de edad: regresa y elige “Mayor de edad”.';
                 if ($tipo === 'coach' && $edad < 18) $E['fecha_nacimiento'] = 'Para trabajar como coach debes ser mayor de edad.';
@@ -38,7 +49,10 @@ class Validar
         return [$v, $E];
     }
 
-    public static function telefono(string $s): string { return preg_replace('/\D/', '', $s); }
+    public static function telefono(string $s): string
+    {
+        return preg_replace('/\D/', '', $s);
+    }
 
     /**
      * Procesa los documentos recibidos. $requeridos: [campo => etiqueta]. $existentes: docs ya guardados [campo => ['ruta','mime','nombre']].
@@ -46,19 +60,33 @@ class Validar
      */
     public static function documentos(array $recibidos, array $requeridos, array $existentes, string $subdir, string $etiquetaFirma): array
     {
-        $E = []; $docs = $existentes;
+        $E = [];
+        $docs = $existentes;
         foreach ($requeridos as $campo => $lbl) {
             if (!empty($recibidos[$campo])) {
-                try { $nuevo = Almacen::guardar($recibidos[$campo], $subdir); if (isset($docs[$campo])) @unlink(STORAGE_DIR . '/' . $docs[$campo]['ruta']); $docs[$campo] = $nuevo; }
-                catch (InvalidArgumentException $e) { $E[$campo] = "$lbl: " . $e->getMessage() . '.'; }
+                try {
+                    $nuevo = Almacen::guardar($recibidos[$campo], $subdir);
+                    if (isset($docs[$campo])) @unlink(STORAGE_DIR . '/' . $docs[$campo]['ruta']);
+                    $docs[$campo] = $nuevo;
+                } catch (InvalidArgumentException $e) {
+                    $E[$campo] = "$lbl: " . $e->getMessage() . '.';
+                }
             } elseif (empty($docs[$campo])) $E[$campo] = "$lbl: adjunta el archivo.";
         }
         foreach (array_keys($docs) as $campo) {                                       // lo que ya no se requiere se descarta
-            if ($campo !== 'firma' && !isset($requeridos[$campo])) { @unlink(STORAGE_DIR . '/' . $docs[$campo]['ruta']); unset($docs[$campo]); }
+            if ($campo !== 'firma' && !isset($requeridos[$campo])) {
+                @unlink(STORAGE_DIR . '/' . $docs[$campo]['ruta']);
+                unset($docs[$campo]);
+            }
         }
         if (!empty($recibidos['firma'])) {
-            try { $nuevo = Almacen::guardar($recibidos['firma'], $subdir, true); if (isset($docs['firma'])) @unlink(STORAGE_DIR . '/' . $docs['firma']['ruta']); $docs['firma'] = $nuevo; }
-            catch (InvalidArgumentException $e) { $E['firma'] = 'Firma: ' . $e->getMessage() . '.'; }
+            try {
+                $nuevo = Almacen::guardar($recibidos['firma'], $subdir, true);
+                if (isset($docs['firma'])) @unlink(STORAGE_DIR . '/' . $docs['firma']['ruta']);
+                $docs['firma'] = $nuevo;
+            } catch (InvalidArgumentException $e) {
+                $E['firma'] = 'Firma: ' . $e->getMessage() . '.';
+            }
         } elseif (empty($docs['firma'])) $E['firma'] = "Falta la $etiquetaFirma.";
         return [$docs, $E];
     }
@@ -77,12 +105,19 @@ class RegistroController
     /** POST registro/codigo {codigo} */
     public function codigo(array $p, ?array $auth): void
     {
-        $d = entrada(); $codigo = preg_replace('/\s/', '', (string)($d['codigo'] ?? ''));
+        $d = entrada();
+        $codigo = preg_replace('/\s/', '', (string)($d['codigo'] ?? ''));
         $clave = 'codigo:' . ipCliente();
         if (Seguridad::bloqueado($clave, 5)) fallar('Demasiados códigos inválidos. Espera ' . MINUTOS_BLOQUEO . ' minutos o solicita uno nuevo en recepción.', 429);
-        if (!preg_match('/^\d{6}$/', $codigo)) { Seguridad::registrar($clave, false); fallar('El código debe tener exactamente 6 dígitos (0-9).', 422); }
+        if (!preg_match('/^\d{6}$/', $codigo)) {
+            Seguridad::registrar($clave, false);
+            fallar('El código debe tener exactamente 6 dígitos (0-9).', 422);
+        }
         $c = Codigo::vigente($codigo);
-        if (!$c) { Seguridad::registrar($clave, false); fallar('Código no válido, vencido o ya utilizado. Pide uno nuevo en recepción.', 422); }
+        if (!$c) {
+            Seguridad::registrar($clave, false);
+            fallar('Código no válido, vencido o ya utilizado. Pide uno nuevo en recepción.', 422);
+        }
         Seguridad::registrar($clave, true);
         responder(['registro_token' => Jwt::codificar(['rol' => 'REGISTRO', 'cid' => (int)$c['id']], 45 * 60)]);
     }
@@ -91,7 +126,8 @@ class RegistroController
     public function estado(array $p, ?array $auth): void
     {
         [, $pen] = $this->contexto($auth);
-        $docs = []; foreach ($pen['docs'] as $k => $f) $docs[$k] = ['nombre' => $f['nombre']];
+        $docs = [];
+        foreach ($pen['docs'] as $k => $f) $docs[$k] = ['nombre' => $f['nombre']];
         responder(['tipo' => $pen['tipo'] ? strtolower($pen['tipo']) : null, 'datos' => $pen['datos'], 'docs' => $docs, 'datos_ok' => !empty($pen['datos']['_ok'])]);
     }
 
@@ -112,10 +148,14 @@ class RegistroController
     public function documento(array $p, ?array $auth): void
     {
         [$c, $pen] = $this->contexto($auth);
-        $campo = (string)(entrada()['campo'] ?? ''); $arch = entrada()['archivo'] ?? null;
+        $campo = (string)(entrada()['campo'] ?? '');
+        $arch = entrada()['archivo'] ?? null;
         if (!in_array($campo, ['id_oficial', 'id_tutor', 'cert_medico', 'firma'], true)) fallar('Documento no válido.', 422);
-        try { $nuevo = Almacen::guardar($arch, 'pendientes/' . $c['id'], $campo === 'firma'); }
-        catch (InvalidArgumentException $e) { fallar(ucfirst($e->getMessage()) . '.', 422); }
+        try {
+            $nuevo = Almacen::guardar($arch, 'pendientes/' . $c['id'], $campo === 'firma');
+        } catch (InvalidArgumentException $e) {
+            fallar(ucfirst($e->getMessage()) . '.', 422);
+        }
         if (isset($pen['docs'][$campo])) @unlink(STORAGE_DIR . '/' . $pen['docs'][$campo]['ruta']);
         $pen['docs'][$campo] = $nuevo;
         Codigo::guardarPendiente((int)$c['id'], $pen['tipo'], $pen['datos'], $pen['docs']);
@@ -127,9 +167,12 @@ class RegistroController
     {
         [$c, $pen] = $this->contexto($auth);
         if (!$pen['tipo']) fallar('Primero elige si el socio es mayor o menor de edad.', 409);
-        $d = entrada(); $tipo = strtolower($pen['tipo']); $menor = $tipo === 'menor';
+        $d = entrada();
+        $tipo = strtolower($pen['tipo']);
+        $menor = $tipo === 'menor';
         [$v, $E] = Validar::persona($d, $tipo);
-        $v['tel_contacto'] = Validar::telefono((string)($d['tel_contacto'] ?? '')); $v['tel_emergencia'] = Validar::telefono((string)($d['tel_emergencia'] ?? ''));
+        $v['tel_contacto'] = Validar::telefono((string)($d['tel_contacto'] ?? ''));
+        $v['tel_emergencia'] = Validar::telefono((string)($d['tel_emergencia'] ?? ''));
         $v['tutor_nombre'] = $menor ? mayus($d['tutor_nombre'] ?? '') : '';
         if ($menor && !preg_match('/^[A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ \'.-]{4,119}$/u', $v['tutor_nombre'])) $E['tutor_nombre'] = 'Escribe el nombre completo del padre, madre o tutor en MAYÚSCULAS.';
         if (!preg_match('/^\d{10}$/', $v['tel_contacto'])) $E['tel_contacto'] = 'Número de contacto a 10 dígitos.';
@@ -147,7 +190,7 @@ class RegistroController
         responder(['usuario_sugerido' => Socio::generarUsuario($v['nombre'], $v['apellido_paterno'], $v['apellido_materno'], $v['fecha_iso'])]);
     }
 
-    /** GET registro/cuenta — usuario que se le asignará (paso 4) */
+    /** GET registro/cuenta — usuario que se le asignará*/
     public function cuentaInfo(array $p, ?array $auth): void
     {
         [, $pen] = $this->contexto($auth);
@@ -162,11 +205,16 @@ class RegistroController
         [$c, $pen] = $this->contexto($auth);
         $v = $pen['datos'];
         if (!$pen['tipo'] || empty($v['_ok'])) fallar('Completa primero los datos del socio.', 409);
-        $d = entrada(); $E = [];
+        $d = entrada();
+        $E = [];
         $usuario = Socio::generarUsuario($v['nombre'], $v['apellido_paterno'], $v['apellido_materno'], $v['fecha_iso']);
-        $email = strtolower(trim((string)($d['email'] ?? ''))); $tel = Validar::telefono((string)($d['telefono'] ?? '')); $pw = (string)($d['password'] ?? '');
-        if (!preg_match(RE_EMAIL, $email) || strlen($email) > 160) $E['email'] = 'Escribe un correo válido.'; elseif (Socio::existeCorreo($email)) $E['email'] = 'Ese correo ya está registrado.';
-        if (!preg_match('/^\d{10}$/', $tel)) $E['telefono'] = 'El número debe tener 10 dígitos.'; elseif (Socio::existeTelefono($tel)) $E['telefono'] = 'Ese número ya está registrado.';
+        $email = strtolower(trim((string)($d['email'] ?? '')));
+        $tel = Validar::telefono((string)($d['telefono'] ?? ''));
+        $pw = (string)($d['password'] ?? '');
+        if (!preg_match(RE_EMAIL, $email) || strlen($email) > 160) $E['email'] = 'Escribe un correo válido.';
+        elseif (Socio::existeCorreo($email)) $E['email'] = 'Ese correo ya está registrado.';
+        if (!preg_match('/^\d{10}$/', $tel)) $E['telefono'] = 'El número debe tener 10 dígitos.';
+        elseif (Socio::existeTelefono($tel)) $E['telefono'] = 'Ese número ya está registrado.';
         $f = erroresPassword($pw);
         if ($f) $E['password'] = 'La contraseña necesita: ' . implode(', ', $f) . '.';
         elseif ($pw !== (string)($d['password2'] ?? '')) $E['password2'] = 'Las contraseñas no coinciden.';
@@ -174,11 +222,29 @@ class RegistroController
         if ($E) fallarCampos($E);
 
         try {
-            $socio = Socio::crear(['usuario' => $usuario, 'correo' => $email, 'telefono' => $tel, 'password' => $pw, 'tipo' => $pen['tipo'], 'nombre' => $v['nombre'],
-                'apellido_paterno' => $v['apellido_paterno'], 'apellido_materno' => $v['apellido_materno'], 'fecha_nacimiento' => $v['fecha_iso'], 'genero' => $v['genero'], 'sexo' => $v['sexo'],
-                'tel_contacto' => $v['tel_contacto'], 'tel_emergencia' => $v['tel_emergencia'], 'servicio_medico' => $v['servicio_medico'], 'enfermedad_cronica' => $v['enfermedad_cronica'],
-                'enfermedad_otra' => $v['enfermedad_otra'], 'tutor_nombre' => $v['tutor_nombre'], 'codigo_registro' => $c['codigo']], $pen['docs'], (int)$c['id']);
-        } catch (InvalidArgumentException $e) { fallar($e->getMessage(), 409); }
+            $socio = Socio::crear([
+                'usuario' => $usuario,
+                'correo' => $email,
+                'telefono' => $tel,
+                'password' => $pw,
+                'tipo' => $pen['tipo'],
+                'nombre' => $v['nombre'],
+                'apellido_paterno' => $v['apellido_paterno'],
+                'apellido_materno' => $v['apellido_materno'],
+                'fecha_nacimiento' => $v['fecha_iso'],
+                'genero' => $v['genero'],
+                'sexo' => $v['sexo'],
+                'tel_contacto' => $v['tel_contacto'],
+                'tel_emergencia' => $v['tel_emergencia'],
+                'servicio_medico' => $v['servicio_medico'],
+                'enfermedad_cronica' => $v['enfermedad_cronica'],
+                'enfermedad_otra' => $v['enfermedad_otra'],
+                'tutor_nombre' => $v['tutor_nombre'],
+                'codigo_registro' => $c['codigo']
+            ], $pen['docs'], (int)$c['id']);
+        } catch (InvalidArgumentException $e) {
+            fallar($e->getMessage(), 409);
+        }
         $i = Verificacion::info('SOCIO', (int)$socio['id'], $socio['correo']);
         responder(['usuario' => $socio['usuario'], 'verif_token' => AuthController::tokenVerificacion('SOCIO', (int)$socio['id'])]);
     }

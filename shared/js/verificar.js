@@ -26,7 +26,7 @@ page(async () => {
       info.codigo_demo
         ? `<div class="mailbox"><div class="mailbox-head">${icon("file", 16)} Bandeja simulada <span class="tag mono">MODO DEMO</span></div>
       <p><strong>FIT CODE</strong> &lt;no-responder@fitcode.mx&gt;<br>Tu código de verificación es <span class="mono accent" style="font-size:18px;letter-spacing:.2em">${esc(info.codigo_demo)}</span></p>
-      <p class="hint" style="margin:0">Con <span class="mono">MAIL_MODO = 'smtp'</span> en config.php este mensaje llega al correo real y nunca se muestra aquí.</p></div>`
+      <p class="hint" style="margin:0">Con <span class="mono">MAIL_MODO = 'mail'</span> en config.php este mensaje llega al correo real y nunca se muestra aquí.</p></div>`
         : ""
     }
     <form class="form card corners" data-form="verificar" autocomplete="off">

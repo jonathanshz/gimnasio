@@ -1,11 +1,10 @@
 -- =====================================================================
 -- FIT CODE · Datos de demostración (OPCIONAL)
--- Importar DESPUÉS de schema.sql y sobre una base recién creada (usa ids fijos 1, 2 y 3 para los socios).
--- Las fechas son relativas a la fecha de importación (CURDATE / NOW), así que siempre se ven vigentes.
+-- Importar DESPUÉS de schema.sql y sobre una base recién creada.
+-- Las fechas son relativas a la fecha de importación.
 --   Personal : ADM-0001 admin@fitcode.mx / Admin#2026 · REC-0001 recepcion@fitcode.mx / Recep#2026 · COA-0001 coach@fitcode.mx / Coach#2026
 --   Socios   : ANAPP-150398 (activa) · LUISRM-020901 (vence en 2 días, con ficha de efectivo) · SOFIAHL-110510 (menor, membresía vencida) — contraseña Socio#2026
 --   Códigos de registro para probar: 482915 y 731004
--- No cargues este archivo en producción.
 -- =====================================================================
 USE fitcode;
 SET NAMES utf8mb4;

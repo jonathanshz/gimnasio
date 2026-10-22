@@ -1,4 +1,5 @@
 <?php
+
 /** Códigos de registro que entrega recepción (codigos_registro) y el registro en curso (registro_pendiente). */
 class Codigo
 {
@@ -11,7 +12,7 @@ class Codigo
             $st->execute([$codigo, ahora()]);
             if ($st->fetchColumn()) continue;           // ya hay uno vigente igual: genera otro
             $db->prepare('INSERT INTO codigos_registro (codigo, generado_por, creado_en, expira_en) VALUES (?,?,?,?)')
-               ->execute([$codigo, $staffId, ahora(), date('Y-m-d H:i:s', time() + HORAS_CODIGO_REGISTRO * 3600)]);
+                ->execute([$codigo, $staffId, ahora(), date('Y-m-d H:i:s', time() + HORAS_CODIGO_REGISTRO * 3600)]);
             return $codigo;
         }
         throw new RuntimeException('No se pudo generar un código único.');
@@ -21,11 +22,14 @@ class Codigo
     public static function vigente(string $codigo): ?array
     {
         $st = Database::conectar()->prepare('SELECT * FROM codigos_registro WHERE codigo = ? AND usado_en IS NULL AND expira_en > ? ORDER BY id DESC LIMIT 1');
-        $st->execute([$codigo, ahora()]); return $st->fetch() ?: null;
+        $st->execute([$codigo, ahora()]);
+        return $st->fetch() ?: null;
     }
     public static function porId(int $id): ?array
     {
-        $st = Database::conectar()->prepare('SELECT * FROM codigos_registro WHERE id = ?'); $st->execute([$id]); return $st->fetch() ?: null;
+        $st = Database::conectar()->prepare('SELECT * FROM codigos_registro WHERE id = ?');
+        $st->execute([$id]);
+        return $st->fetch() ?: null;
     }
     public static function listar(int $n = 40): array
     {
@@ -35,7 +39,8 @@ class Codigo
 
     public static function pendiente(int $codigoId): array
     {
-        $st = Database::conectar()->prepare('SELECT * FROM registro_pendiente WHERE codigo_id = ?'); $st->execute([$codigoId]);
+        $st = Database::conectar()->prepare('SELECT * FROM registro_pendiente WHERE codigo_id = ?');
+        $st->execute([$codigoId]);
         $r = $st->fetch();
         return ['tipo' => $r['tipo'] ?? null, 'datos' => $r && $r['datos'] ? json_decode($r['datos'], true) : null, 'docs' => $r && $r['docs'] ? json_decode($r['docs'], true) : []];
     }

@@ -19,13 +19,17 @@ class AuthController
         if (Seguridad::bloqueado($clave)) fallar('Demasiados intentos fallidos. Por seguridad, espera ' . MINUTOS_BLOQUEO . ' minutos' . (strpos($clave, 'socio') === 0 ? ' o acude a recepción.' : '.'), 429);
         $ok = $fila ? password_verify($password, $fila['password_hash']) : (bool)password_hash($password, PASSWORD_BCRYPT) && false;   // gasta el mismo tiempo si la cuenta no existe
         Seguridad::registrar($clave, $ok);
-        if (!$ok) { Seguridad::registrar('ip:' . ipCliente(), false); fallar($mensaje, 401); }
+        if (!$ok) {
+            Seguridad::registrar('ip:' . ipCliente(), false);
+            fallar($mensaje, 401);
+        }
     }
 
     /** POST auth/login — socio: usuario, correo o teléfono + contraseña */
     public function login(array $p, ?array $auth): void
     {
-        $d = entrada(); exigir($d, ['identificador', 'password']);
+        $d = entrada();
+        exigir($d, ['identificador', 'password']);
         $ident = trim((string)$d['identificador']);
         $s = Socio::porIdentificador($ident);
         self::validarCredenciales($s, (string)$d['password'], $s ? 'socio:' . $s['id'] : 'x:' . strtolower($ident), 'Usuario o contraseña incorrectos.');
@@ -46,7 +50,8 @@ class AuthController
     /** POST auth/staff-login — recepción y coaches: número de empleado o correo */
     public function staffLogin(array $p, ?array $auth): void
     {
-        $d = entrada(); exigir($d, ['identificador', 'password']);
+        $d = entrada();
+        exigir($d, ['identificador', 'password']);
         $u = Usuario::porNumeroOCorreo(trim((string)$d['identificador']), ['RECEPCION', 'COACH']);
         $this->entrarStaff('Número de empleado, correo o contraseña incorrectos.', $u, (string)$d['password'], (string)$d['identificador']);
     }
@@ -54,7 +59,8 @@ class AuthController
     /** POST auth/admin-login — administración y dirección: número de empleado + correo + contraseña */
     public function adminLogin(array $p, ?array $auth): void
     {
-        $d = entrada(); exigir($d, ['numero', 'email', 'password']);
+        $d = entrada();
+        exigir($d, ['numero', 'email', 'password']);
         $u = Usuario::porNumeroYCorreo(trim((string)$d['numero']), strtolower(trim((string)$d['email'])), ['ADMIN', 'DUENO']);
         $this->entrarStaff('Los datos de acceso no coinciden.', $u, (string)$d['password'], (string)$d['numero']);
     }
@@ -62,8 +68,12 @@ class AuthController
     private function cuentaDeVerificacion(array $auth): array
     {
         $id = (int)$auth['sub'];
-        if ($auth['cuenta'] === 'SOCIO') { $c = Socio::porId($id); return [$c, $c['correo'] ?? '']; }
-        $c = Usuario::porId($id); return [$c, $c['correo'] ?? ''];
+        if ($auth['cuenta'] === 'SOCIO') {
+            $c = Socio::porId($id);
+            return [$c, $c['correo'] ?? ''];
+        }
+        $c = Usuario::porId($id);
+        return [$c, $c['correo'] ?? ''];
     }
 
     /** GET auth/verificacion — datos para la pantalla de verificación (envía el código si no hay uno vigente) */
@@ -73,15 +83,22 @@ class AuthController
         if (!$c) fallar('Cuenta no encontrada.', 404);
         if ($c['correo_verificado_en']) responder(['verificada' => true, 'tipo' => strtolower($auth['cuenta'])]);
         $i = Verificacion::info($auth['cuenta'], (int)$auth['sub'], $correo);
-        if (!$i['ok']) fallar($i['error'], 429);
-        responder(['verificada' => false, 'tipo' => strtolower($auth['cuenta']), 'correo' => $i['correo'], 'expira_en' => $i['expira_en'], 'codigo_demo' => $i['codigo_demo'],
-                   'usuario' => $auth['cuenta'] === 'SOCIO' ? $c['usuario'] : $c['usuario']]);
+        if (!$i['ok']) fallar($i['error'], $i['status'] ?? 429);
+        responder([
+            'verificada' => false,
+            'tipo' => strtolower($auth['cuenta']),
+            'correo' => $i['correo'],
+            'expira_en' => $i['expira_en'],
+            'codigo_demo' => $i['codigo_demo'],
+            'usuario' => $auth['cuenta'] === 'SOCIO' ? $c['usuario'] : $c['usuario']
+        ]);
     }
 
     /** POST auth/verificar {codigo} */
     public function verificar(array $p, ?array $auth): void
     {
-        $d = entrada(); $codigo = preg_replace('/\D/', '', (string)($d['codigo'] ?? ''));
+        $d = entrada();
+        $codigo = preg_replace('/\D/', '', (string)($d['codigo'] ?? ''));
         if (strlen($codigo) !== 6) fallar('El código debe tener 6 dígitos.', 422);
         [$c] = $this->cuentaDeVerificacion($auth);
         if (!$c) fallar('Cuenta no encontrada.', 404);
@@ -99,7 +116,7 @@ class AuthController
         [$c, $correo] = $this->cuentaDeVerificacion($auth);
         if (!$c) fallar('Cuenta no encontrada.', 404);
         $r = Verificacion::enviar($auth['cuenta'], (int)$auth['sub'], $correo);
-        if (!$r['ok']) fallar($r['error'], 429);
+        if (!$r['ok']) fallar($r['error'], $r['status'] ?? 429);
         $i = Verificacion::info($auth['cuenta'], (int)$auth['sub'], $correo);
         responder(['correo' => $correo, 'expira_en' => $i['expira_en'] ?? null, 'codigo_demo' => $i['codigo_demo'] ?? null]);
     }
@@ -116,7 +133,8 @@ class AuthController
     {
         Membresia::sincronizar();
         $res = Membresia::resumenActivos();
-        $k = Asistencia::kpisHoy(); $m = Maquina::conteo();
+        $k = Asistencia::kpisHoy();
+        $m = Maquina::conteo();
         responder(['socios_activos' => $res['activos'], 'maquinas_libres' => $m['LIBRE'], 'dentro_ahora' => $k['dentro']]);
     }
 }

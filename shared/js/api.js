@@ -2,7 +2,7 @@
 /* =====================================================================
    FIT CODE · cliente de la API REST (/api/v1) con JWT
    Cuatro tipos de sesión, cada uno con su propio token en sessionStorage:
-     socio     -> portal del socio            staff   -> panel del personal
+     socio     -> portal del socio            staff    -> panel del personal
      registro  -> alta de socio con código    verif    -> verificación de correo
    La ruta base se calcula sola a partir de la URL (sirve en /gimnasio, en otra carpeta o en la raíz).
    ===================================================================== */
@@ -55,7 +55,7 @@ class ApiError extends Error {
   }
 }
 
-/** Llama a la API. 'tipo' indica qué token enviar (socio|staff|registro|verif). Devuelve 'data' o lanza ApiError. */
+/** Llama a la API. `tipo` indica qué token enviar (socio|staff|registro|verif). Devuelve `data` o lanza ApiError. */
 async function api(metodo, ruta, cuerpo, tipo) {
   const headers = { Accept: "application/json" },
     tk = tipo ? Ses.get(TOKEN[tipo]) : null;
@@ -90,7 +90,7 @@ async function api(metodo, ruta, cuerpo, tipo) {
     j = await r.json();
   } catch (_) {}
   if (r.status === 401 && tk) {
-    // el token venció o ya no es válido -> volver a iniciar sesión
+    // el token venció o ya no es válido → volver a iniciar sesión
     Ses.del(TOKEN[tipo]);
     Ses.del(tipo);
     flash(
@@ -156,7 +156,7 @@ async function sesionSocio() {
 }
 const inicioStaff = (st) =>
   st.rol === "COACH" ? URL_APP + "coach.html" : URL_APP + "dashboard.html";
-/** Devuelve el personal con sesión (rol tomado de la base de datos) o redirige. 'roles': lista permitida. */
+/** Devuelve el personal con sesión (rol tomado de la base de datos) o redirige. `roles`: lista permitida. */
 async function sesionStaff(roles = ["RECEPCION", "ADMIN", "DUENO"]) {
   if (!hayToken("staff")) {
     flash("error", "Inicia sesión como personal del gimnasio.");
