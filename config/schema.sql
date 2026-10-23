@@ -85,6 +85,7 @@ CREATE TABLE
     tipo ENUM ('MAYOR', 'MENOR') NULL,
     datos LONGTEXT NULL,
     docs LONGTEXT NULL,
+    cuenta LONGTEXT NULL, -- [NUEVO] correo, teléfono y contraseña (hash) del paso 4; el socio NO existe hasta verificar el correo
     actualizado_en DATETIME NOT NULL,
     FOREIGN KEY (codigo_id) REFERENCES codigos_registro (id) ON DELETE CASCADE
   ) ENGINE = InnoDB;
@@ -118,7 +119,7 @@ CREATE TABLE
 CREATE TABLE
   verificaciones_correo (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    cuenta ENUM ('SOCIO', 'STAFF') NOT NULL,
+    cuenta ENUM ('SOCIO', 'STAFF', 'REGISTRO') NOT NULL, -- REGISTRO: alta de socio en curso (cuenta_id = codigos_registro.id)
     cuenta_id INT NOT NULL,
     correo VARCHAR(160) NOT NULL,
     codigo_hash CHAR(64) NOT NULL,

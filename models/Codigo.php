@@ -6,6 +6,7 @@ class Codigo
     public static function generar(int $staffId): string
     {
         $db = Database::conectar();
+        self::limpiarVencidos();
         for ($i = 0; $i < 20; $i++) {
             $codigo = codigoAleatorio6();
             $st = $db->prepare('SELECT 1 FROM codigos_registro WHERE codigo = ? AND usado_en IS NULL AND expira_en > ?');
@@ -42,7 +43,32 @@ class Codigo
         $st = Database::conectar()->prepare('SELECT * FROM registro_pendiente WHERE codigo_id = ?');
         $st->execute([$codigoId]);
         $r = $st->fetch();
-        return ['tipo' => $r['tipo'] ?? null, 'datos' => $r && $r['datos'] ? json_decode($r['datos'], true) : null, 'docs' => $r && $r['docs'] ? json_decode($r['docs'], true) : []];
+        return [
+            'tipo' => $r['tipo'] ?? null,
+            'datos' => $r && $r['datos'] ? json_decode($r['datos'], true) : null,
+            'docs' => $r && $r['docs'] ? json_decode($r['docs'], true) : [],
+            'cuenta' => $r && $r['cuenta'] ? json_decode($r['cuenta'], true) : null
+        ];
+    }
+
+    /** Guarda correo, teléfono y contraseña (ya cifrada) del paso 4. El socio se crea hasta verificar el correo. */
+    public static function guardarCuenta(int $codigoId, array $cuenta): void
+    {
+        Database::conectar()->prepare('UPDATE registro_pendiente SET cuenta = ?, actualizado_en = ? WHERE codigo_id = ?')
+            ->execute([json_encode($cuenta, JSON_UNESCAPED_UNICODE), ahora(), $codigoId]);
+    }
+
+    /** Borra los registros a medias de códigos que ya vencieron sin usarse (datos, archivos y carpeta). Se llama al generar un código nuevo. */
+    public static function limpiarVencidos(): void
+    {
+        $db = Database::conectar();
+        $st = $db->prepare('SELECT p.codigo_id, p.docs FROM registro_pendiente p JOIN codigos_registro c ON c.id = p.codigo_id WHERE c.usado_en IS NULL AND c.expira_en < ?');
+        $st->execute([date('Y-m-d H:i:s', time() - 3600)]);   // 1 h de gracia por si alguien está terminando de verificar
+        foreach ($st->fetchAll() as $r) {
+            foreach (json_decode($r['docs'] ?: '[]', true) ?: [] as $f) @unlink(STORAGE_DIR . '/' . $f['ruta']);
+            @rmdir(STORAGE_DIR . '/pendientes/' . (int)$r['codigo_id']);
+            $db->prepare('DELETE FROM registro_pendiente WHERE codigo_id = ?')->execute([$r['codigo_id']]);
+        }
     }
     public static function guardarPendiente(int $codigoId, ?string $tipo, $datos, array $docs): void
     {

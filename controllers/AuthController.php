@@ -65,9 +65,26 @@ class AuthController
         $this->entrarStaff('Los datos de acceso no coinciden.', $u, (string)$d['password'], (string)$d['numero']);
     }
 
+    private static function tipoDe(string $cuenta): string
+    {
+        return $cuenta === 'STAFF' ? 'staff' : 'socio';
+    }
+
     private function cuentaDeVerificacion(array $auth): array
     {
         $id = (int)$auth['sub'];
+        if ($auth['cuenta'] === 'REGISTRO') { // alta de socio en curso: aún no existe en `socios`
+            $cod = Codigo::porId($id);
+            if (!$cod) return [null, ''];
+            if ($cod['usado_en']) { // ya se verificó y el socio fue creado
+                $s = $cod['usado_por'] ? Socio::porId((int)$cod['usado_por']) : null;
+                return [$s, $s['correo'] ?? ''];
+            }
+            $pen = Codigo::pendiente($id);
+            $v = $pen['datos'];
+            if (!$pen['cuenta'] || empty($v['_ok'])) return [null, ''];
+            return [['correo_verificado_en' => null, 'usuario' => Socio::generarUsuario($v['nombre'], $v['apellido_paterno'], $v['apellido_materno'], $v['fecha_iso'])], $pen['cuenta']['correo']];
+        }
         if ($auth['cuenta'] === 'SOCIO') {
             $c = Socio::porId($id);
             return [$c, $c['correo'] ?? ''];
@@ -80,17 +97,17 @@ class AuthController
     public function verificacion(array $p, ?array $auth): void
     {
         [$c, $correo] = $this->cuentaDeVerificacion($auth);
-        if (!$c) fallar('Cuenta no encontrada.', 404);
-        if ($c['correo_verificado_en']) responder(['verificada' => true, 'tipo' => strtolower($auth['cuenta'])]);
+        if (!$c) fallar($auth['cuenta'] === 'REGISTRO' ? 'Tu registro ya no existe. Comienza de nuevo con tu código de recepción.' : 'Cuenta no encontrada.', 404);
+        if ($c['correo_verificado_en']) responder(['verificada' => true, 'tipo' => self::tipoDe($auth['cuenta'])]);
         $i = Verificacion::info($auth['cuenta'], (int)$auth['sub'], $correo);
         if (!$i['ok']) fallar($i['error'], $i['status'] ?? 429);
         responder([
             'verificada' => false,
-            'tipo' => strtolower($auth['cuenta']),
+            'tipo' => self::tipoDe($auth['cuenta']),
             'correo' => $i['correo'],
             'expira_en' => $i['expira_en'],
             'codigo_demo' => $i['codigo_demo'],
-            'usuario' => $auth['cuenta'] === 'SOCIO' ? $c['usuario'] : $c['usuario']
+            'usuario' => $c['usuario']
         ]);
     }
 
@@ -101,20 +118,29 @@ class AuthController
         $codigo = preg_replace('/\D/', '', (string)($d['codigo'] ?? ''));
         if (strlen($codigo) !== 6) fallar('El código debe tener 6 dígitos.', 422);
         [$c] = $this->cuentaDeVerificacion($auth);
-        if (!$c) fallar('Cuenta no encontrada.', 404);
+        if (!$c) fallar($auth['cuenta'] === 'REGISTRO' ? 'Tu registro ya no existe. Comienza de nuevo con tu código de recepción.' : 'Cuenta no encontrada.', 404);
         $clave = 'verif:' . $auth['cuenta'] . ':' . $auth['sub'];
         if (Seguridad::bloqueado($clave, 15)) fallar('Demasiados intentos. Espera ' . MINUTOS_BLOQUEO . ' minutos.', 429);
         $r = Verificacion::confirmar($auth['cuenta'], (int)$auth['sub'], $codigo);
         Seguridad::registrar($clave, $r['ok']);
         if (!$r['ok']) fallar($r['error'], 422);
-        responder(['tipo' => strtolower($auth['cuenta']), 'usuario' => $c['usuario']]);
+        $usuario = $c['usuario'];
+        if ($auth['cuenta'] === 'REGISTRO') { // código correcto → aquí recién se crea el socio
+            try {
+                $usuario = RegistroController::finalizar((int)$auth['sub'])['usuario'];
+            } catch (InvalidArgumentException $e) {
+                fallar($e->getMessage(), 409);
+            }
+        }
+        responder(['tipo' => self::tipoDe($auth['cuenta']), 'usuario' => $usuario]);
     }
 
     /** POST auth/reenviar */
     public function reenviar(array $p, ?array $auth): void
     {
         [$c, $correo] = $this->cuentaDeVerificacion($auth);
-        if (!$c) fallar('Cuenta no encontrada.', 404);
+        if (!$c) fallar($auth['cuenta'] === 'REGISTRO' ? 'Tu registro ya no existe. Comienza de nuevo con tu código de recepción.' : 'Cuenta no encontrada.', 404);
+        if ($c['correo_verificado_en']) fallar('Tu correo ya estaba verificado. Inicia sesión.', 409);
         $r = Verificacion::enviar($auth['cuenta'], (int)$auth['sub'], $correo);
         if (!$r['ok']) fallar($r['error'], $r['status'] ?? 429);
         $i = Verificacion::info($auth['cuenta'], (int)$auth['sub'], $correo);

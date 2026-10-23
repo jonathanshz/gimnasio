@@ -199,53 +199,48 @@ class RegistroController
         responder(['usuario' => Socio::generarUsuario($v['nombre'], $v['apellido_paterno'], $v['apellido_materno'], $v['fecha_iso']), 'tel_contacto' => $v['tel_contacto']]);
     }
 
-    /** POST registro/cuenta {email, telefono, password, password2} — crea el socio y manda el código al correo */
+    /** POST registro/cuenta {email, telefono, password, password2} — valida y guarda los datos de acceso, y manda el código al correo.
+     *  El socio NO se crea aquí: se crea en finalizar(), cuando el código del correo se confirma. */
     public function cuenta(array $p, ?array $auth): void
     {
         [$c, $pen] = $this->contexto($auth);
         $v = $pen['datos'];
         if (!$pen['tipo'] || empty($v['_ok'])) fallar('Completa primero los datos del socio.', 409);
-        $d = entrada();
-        $E = [];
+        $d = entrada(); $E = [];
         $usuario = Socio::generarUsuario($v['nombre'], $v['apellido_paterno'], $v['apellido_materno'], $v['fecha_iso']);
-        $email = strtolower(trim((string)($d['email'] ?? '')));
-        $tel = Validar::telefono((string)($d['telefono'] ?? ''));
-        $pw = (string)($d['password'] ?? '');
-        if (!preg_match(RE_EMAIL, $email) || strlen($email) > 160) $E['email'] = 'Escribe un correo válido.';
-        elseif (Socio::existeCorreo($email)) $E['email'] = 'Ese correo ya está registrado.';
-        if (!preg_match('/^\d{10}$/', $tel)) $E['telefono'] = 'El número debe tener 10 dígitos.';
-        elseif (Socio::existeTelefono($tel)) $E['telefono'] = 'Ese número ya está registrado.';
+        $email = strtolower(trim((string)($d['email'] ?? ''))); $tel = Validar::telefono((string)($d['telefono'] ?? '')); $pw = (string)($d['password'] ?? '');
+        if (!preg_match(RE_EMAIL, $email) || strlen($email) > 160) $E['email'] = 'Escribe un correo válido.'; elseif (Socio::existeCorreo($email)) $E['email'] = 'Ese correo ya está registrado.';
+        if (!preg_match('/^\d{10}$/', $tel)) $E['telefono'] = 'El número debe tener 10 dígitos.'; elseif (Socio::existeTelefono($tel)) $E['telefono'] = 'Ese número ya está registrado.';
         $f = erroresPassword($pw);
         if ($f) $E['password'] = 'La contraseña necesita: ' . implode(', ', $f) . '.';
         elseif ($pw !== (string)($d['password2'] ?? '')) $E['password2'] = 'Las contraseñas no coinciden.';
         elseif (stripos($pw, explode('-', $usuario)[0]) !== false) $E['password'] = 'No uses tu nombre de usuario dentro de la contraseña.';
         if ($E) fallarCampos($E);
 
+        Codigo::guardarCuenta((int)$c['id'], ['correo' => $email, 'telefono' => $tel, 'password_hash' => password_hash($pw, PASSWORD_BCRYPT)]);
+        $r = Verificacion::enviar('REGISTRO', (int)$c['id'], $email);
+        if (!$r['ok']) fallar($r['error'], $r['status'] ?? 429);
+        responder(['usuario' => $usuario, 'verif_token' => AuthController::tokenVerificacion('REGISTRO', (int)$c['id'])]);
+    }
+
+    /** Crea el socio con lo guardado en registro_pendiente (se llama al confirmar el código del correo). Lanza InvalidArgumentException si ya no se puede. */
+    public static function finalizar(int $codigoId): array
+    {
+        $c = Codigo::porId($codigoId);
+        if (!$c || $c['usado_en']) throw new InvalidArgumentException('Ese código de registro ya fue utilizado.');
+        $pen = Codigo::pendiente($codigoId); $v = $pen['datos']; $k = $pen['cuenta'];
+        if (!$pen['tipo'] || empty($v['_ok']) || !$k) throw new InvalidArgumentException('Tu registro está incompleto. Vuelve a empezar con tu código de recepción.');
+        if (Socio::existeCorreo($k['correo'])) throw new InvalidArgumentException('Ese correo ya fue registrado por otra persona. Ingresa tu código de recepción otra vez y usa otro correo.');
+        if (Socio::existeTelefono($k['telefono'])) throw new InvalidArgumentException('Ese teléfono ya fue registrado por otra persona. Ingresa tu código de recepción otra vez y usa otro número.');
+        $usuario = Socio::generarUsuario($v['nombre'], $v['apellido_paterno'], $v['apellido_materno'], $v['fecha_iso']);
         try {
-            $socio = Socio::crear([
-                'usuario' => $usuario,
-                'correo' => $email,
-                'telefono' => $tel,
-                'password' => $pw,
-                'tipo' => $pen['tipo'],
-                'nombre' => $v['nombre'],
-                'apellido_paterno' => $v['apellido_paterno'],
-                'apellido_materno' => $v['apellido_materno'],
-                'fecha_nacimiento' => $v['fecha_iso'],
-                'genero' => $v['genero'],
-                'sexo' => $v['sexo'],
-                'tel_contacto' => $v['tel_contacto'],
-                'tel_emergencia' => $v['tel_emergencia'],
-                'servicio_medico' => $v['servicio_medico'],
-                'enfermedad_cronica' => $v['enfermedad_cronica'],
-                'enfermedad_otra' => $v['enfermedad_otra'],
-                'tutor_nombre' => $v['tutor_nombre'],
-                'codigo_registro' => $c['codigo']
-            ], $pen['docs'], (int)$c['id']);
-        } catch (InvalidArgumentException $e) {
-            fallar($e->getMessage(), 409);
+            return Socio::crear(['usuario' => $usuario, 'correo' => $k['correo'], 'telefono' => $k['telefono'], 'password_hash' => $k['password_hash'], 'tipo' => $pen['tipo'], 'nombre' => $v['nombre'],
+                'apellido_paterno' => $v['apellido_paterno'], 'apellido_materno' => $v['apellido_materno'], 'fecha_nacimiento' => $v['fecha_iso'], 'genero' => $v['genero'], 'sexo' => $v['sexo'],
+                'tel_contacto' => $v['tel_contacto'], 'tel_emergencia' => $v['tel_emergencia'], 'servicio_medico' => $v['servicio_medico'], 'enfermedad_cronica' => $v['enfermedad_cronica'],
+                'enfermedad_otra' => $v['enfermedad_otra'], 'tutor_nombre' => $v['tutor_nombre'], 'codigo_registro' => $c['codigo'], 'correo_verificado_en' => ahora()], $pen['docs'], $codigoId);
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23000') throw new InvalidArgumentException('Alguien más acaba de registrar ese correo, teléfono o usuario. Ingresa tu código de recepción otra vez.');
+            throw $e;
         }
-        $i = Verificacion::info('SOCIO', (int)$socio['id'], $socio['correo']);
-        responder(['usuario' => $socio['usuario'], 'verif_token' => AuthController::tokenVerificacion('SOCIO', (int)$socio['id'])]);
     }
 }

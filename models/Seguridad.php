@@ -96,8 +96,10 @@ class Verificacion
             return ['ok' => false, 'error' => $n >= 5 ? 'Demasiados intentos. Pide un código nuevo.' : 'Código incorrecto. Te quedan ' . (5 - $n) . ' intento(s).'];
         }
         $db->prepare('UPDATE verificaciones_correo SET verificado_en = ? WHERE id = ?')->execute([ahora(), $v['id']]);
-        $tabla = $cuenta === 'SOCIO' ? 'socios' : 'staff';
-        $db->prepare("UPDATE $tabla SET correo_verificado_en = ? WHERE id = ?")->execute([ahora(), $id]);
+        if ($cuenta !== 'REGISTRO') { // REGISTRO: el socio todavía no existe; lo crea RegistroController::finalizar
+            $tabla = $cuenta === 'SOCIO' ? 'socios' : 'staff';
+            $db->prepare("UPDATE $tabla SET correo_verificado_en = ? WHERE id = ?")->execute([ahora(), $id]);
+        }
         return ['ok' => true];
     }
 }

@@ -9,7 +9,17 @@ page(async () => {
     flash("error", "Inicia sesión para verificar tu correo.");
     return ir("index.html");
   }
-  const info = await GET("auth/verificacion", "verif");
+  let info;
+  try {
+    info = await GET("auth/verificacion", "verif");
+  } catch (e) {
+    if (e.status === 404) {
+      cerrarVerif();
+      flash("error", e.message);
+      return ir(v.registro ? "registro-codigo.html" : "index.html");
+    }
+    throw e;
+  }
   if (info.verificada) {
     cerrarVerif();
     flash("ok", "Tu correo ya estaba verificado. Inicia sesión.");
@@ -21,7 +31,7 @@ page(async () => {
   return `<div class="reg-page">${pasos ? regHead(5) : `<header class="reg-head"><a href="index.html">${logo()}</a><span class="tag mono">VERIFICACIÓN</span></header>`}
   <div class="reg-body"><div class="panel rise">
     <p class="kicker">${pasos ? "Paso 5 de 5" : "Seguridad de la cuenta"}</p><h2 class="title">Verifica tu correo</h2>
-    <p class="lead">Enviamos un código de 6 dígitos a <strong>${esc(info.correo)}</strong>. Vence en 15 minutos.</p>
+    <p class="lead">Enviamos un código de 6 dígitos a <strong>${esc(info.correo)}</strong>. Vence en 15 minutos.${pasos ? " Tu cuenta se creará en cuanto lo confirmes." : ""}</p>
     ${
       info.codigo_demo
         ? `<div class="mailbox"><div class="mailbox-head">${icon("file", 16)} Bandeja simulada <span class="tag mono">MODO DEMO</span></div>
@@ -61,6 +71,14 @@ FORMS.verificar = async (d, form) => {
     location.href = "index.html";
   } catch (e) {
     if (e.redirigido) throw e;
+    if (e.status === 409) {
+      // el alta ya no se puede completar (correo/teléfono tomados, código usado…)
+      const reg = (Ses.get("verif") || {}).registro;
+      cerrarVerif();
+      flash("error", e.message);
+      location.href = reg ? "registro-codigo.html" : "index.html";
+      return;
+    }
     verifErr = e.message;
     render();
   }

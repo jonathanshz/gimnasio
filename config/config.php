@@ -1,9 +1,9 @@
 <?php
 // Configuración global. Cambia estos valores antes de poner el sistema en producción.
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'fitcode');                    // [CAMBIO] antes gimnasio_db
-define('DB_USER', 'root');
-define('DB_PASS', 'jonas812');
+define('DB_HOST', 'sql111.infinityfree.com');
+define('DB_NAME', 'if0_43096934_fit_codev2');                    // [CAMBIO] antes gimnasio_db
+define('DB_USER', 'if0_43096934');
+define('DB_PASS', 'Jonas812');
 
 define('BASE_URL', '/gimnasio');                 // Carpeta donde vive el proyecto en el servidor
 define('JWT_SECRET', 'jshjkdfkjsfkjsdkfsdfkdfsd');

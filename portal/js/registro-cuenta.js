@@ -1,6 +1,7 @@
 "use strict";
 /* Portal · registro, paso 4 de 5: correo, teléfono y contraseña.
-   API: GET registro/cuenta (usuario asignado) · POST registro/cuenta → crea el socio y manda el código al correo */
+   API: GET registro/cuenta (usuario asignado) · POST registro/cuenta → guarda los datos y manda el código al correo.
+   El socio NO se crea aquí: se crea al confirmar el código en la pantalla de verificación (paso 5). */
 let cuentaState = { E: {}, email: "", telefono: null };
 
 page(async () => {
@@ -29,13 +30,13 @@ page(async () => {
       <div class="field${E.telefono ? " invalid" : ""}"><label for="tel">Número de teléfono <span class="req">*</span></label><div class="input-wrap">${icon("user", 18)}<input class="input mono" id="tel" name="telefono" value="${esc(st.telefono ?? info.tel_contacto)}" inputmode="tel" data-digits="10"></div>${errP(E, "telefono")}</div>
       ${pwField()}${errP(E, "password")}
       <div class="field"><label for="pw2">Confirmar contraseña <span class="req">*</span></label><div class="input-wrap">${icon("lock", 18)}<input class="input" type="password" id="pw2" name="password2" autocomplete="new-password" data-match="pw"></div><p class="hint"></p>${errP(E, "password2")}</div>
-      <button class="btn btn-primary btn-block" type="submit">${icon("check", 18)} Crear cuenta y verificar correo</button>
+      <button class="btn btn-primary btn-block" type="submit">${icon("check", 18)} Continuar y verificar correo</button>
     </form></div></div></div>`;
 });
 
 FORMS.cuenta = async (d, form) => {
   try {
-    const r = await conBoton(form, "Creando cuenta…", () =>
+    const r = await conBoton(form, "Enviando código…", () =>
       POST("registro/cuenta", d, "registro"),
     );
     Ses.del(TOKEN.registro);

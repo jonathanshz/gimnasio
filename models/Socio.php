@@ -87,13 +87,13 @@ class Socio
         $db->beginTransaction();
         try {
             $db->prepare('INSERT INTO socios (usuario, correo, telefono, password_hash, tipo, nombre, apellido_paterno, apellido_materno, edad, fecha_nacimiento,
-                    genero, sexo, tel_contacto, tel_emergencia, servicio_medico, enfermedad_cronica, enfermedad_otra, tutor_nombre, codigo_registro, fecha_ingreso, creado_en)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+                    genero, sexo, tel_contacto, tel_emergencia, servicio_medico, enfermedad_cronica, enfermedad_otra, tutor_nombre, codigo_registro, fecha_ingreso, creado_en, correo_verificado_en)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
                 ->execute([
                     $d['usuario'],
                     $d['correo'],
                     $d['telefono'],
-                    password_hash($d['password'], PASSWORD_BCRYPT),
+                    $d['password_hash'] ?? password_hash($d['password'], PASSWORD_BCRYPT),
                     strtoupper($d['tipo']),
                     $d['nombre'],
                     $d['apellido_paterno'],
@@ -110,7 +110,8 @@ class Socio
                     $d['tutor_nombre'] ?: null,
                     $d['codigo_registro'],
                     hoy(),
-                    ahora()
+                    ahora(),
+                    $d['correo_verificado_en'] ?? null
                 ]);
             $id = (int)$db->lastInsertId();
             $db->prepare('UPDATE socios SET codigo_barras = ? WHERE id = ?')->execute([generarCodigoBarras($id, hoy()), $id]);
